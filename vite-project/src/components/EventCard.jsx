@@ -1,18 +1,34 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, MapPin } from "lucide-react";
 
-import { formatMoney } from "../data/events";
+import {
+  ArrowUpRight,
+  MapPin,
+} from "lucide-react";
 
-export function EventPoster({ event, large = false }) {
+import { formatMoney } from "../data/event .js";
+
+export function EventPoster({
+  event,
+  large = false,
+}) {
   return (
     <div
-      className={`event-poster ${event.theme} ${large ? "poster-large" : ""}`}
+      className={[
+        "event-poster",
+        event.theme,
+        large ? "poster-large" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <span className="poster-label">
         {event.category} / {event.city}
       </span>
 
-      <div className="poster-decoration" aria-hidden="true" />
+      <div
+        className="poster-decoration"
+        aria-hidden="true"
+      />
 
       <strong className="poster-words">
         {event.posterLines[0]}
@@ -21,7 +37,8 @@ export function EventPoster({ event, large = false }) {
       </strong>
 
       <span className="poster-caption">
-        A LITTLE LESS SCROLLING. A LITTLE MORE LIVING.
+        A LITTLE LESS SCROLLING.
+        A LITTLE MORE LIVING.
       </span>
     </div>
   );
@@ -41,15 +58,22 @@ export default function EventCard({ event }) {
   });
 
   const startingPrice = Math.min(
-    ...event.ticketTypes.map((ticket) => ticket.price)
+    ...event.ticketTypes.map(
+      (ticket) => ticket.price
+    )
   );
 
   return (
-    <Link to={`/events/${event.id}`} className="event-card">
+    <Link
+      to={`/events/${event.id}`}
+      className="event-card"
+    >
       <div className="event-card-image">
         <EventPoster event={event} />
 
-        <span className="category-badge">{event.category}</span>
+        <span className="category-badge">
+          {event.category}
+        </span>
       </div>
 
       <div className="event-card-content">

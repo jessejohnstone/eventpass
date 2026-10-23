@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, Search, Ticket } from "lucide-react";
 
 import EventCard from "../components/EventCard";
-import { categories, events } from "../data/events";
+import { categories, events } from "../data/event .js";
 
 export default function Home() {
   const [search, setSearch] = useState("");

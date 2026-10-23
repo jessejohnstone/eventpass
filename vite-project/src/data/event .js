@@ -20,14 +20,17 @@ export const events = [
     capacity: 500,
     theme: "sunset",
     posterLines: ["AFTER", "HOURS."],
+
     description:
       "An open-air evening of live music, good food, and great company. Discover talented performers and spend an unforgettable evening under the Nairobi sky.",
+
     highlights: [
       "Live music performances",
       "Food and refreshment vendors",
       "Outdoor experience",
       "A dedicated VIP section",
     ],
+
     ticketTypes: [
       {
         id: "early-bird",
@@ -62,14 +65,17 @@ export const events = [
     capacity: 150,
     theme: "tech",
     posterLines: ["IDEAS INTO", "IMPACT."],
+
     description:
       "A day of practical workshops, conversations, and connections for developers and curious builders. Bring your laptop, meet other creators, and turn an idea into something real.",
+
     highlights: [
       "Practical development workshops",
       "Networking with other developers",
       "Project demonstrations",
       "Community discussions",
     ],
+
     ticketTypes: [
       {
         id: "student",
@@ -98,14 +104,17 @@ export const events = [
     capacity: 100,
     theme: "art",
     posterLines: ["MAKE", "ROOM."],
+
     description:
-      "Meet independent artists, explore original work, and spend an afternoon creating something of your own. A welcoming space for anyone who enjoys art, design, and creative conversations.",
+      "Meet independent artists, explore original work, and spend an afternoon creating something of your own. A welcoming space for art, design, and creative conversations.",
+
     highlights: [
       "Independent art exhibitions",
       "Creative workshops",
       "Meet local artists",
       "Art and design conversations",
     ],
+
     ticketTypes: [
       {
         id: "day-pass",
@@ -134,14 +143,17 @@ export const events = [
     capacity: 80,
     theme: "forest",
     posterLines: ["GET", "OUTSIDE."],
+
     description:
       "Step away from your usual routine for a guided morning walk, fresh air, and new connections. Come with a friend or meet someone new along the trail.",
+
     highlights: [
       "Guided group walk",
       "Community activities",
       "Photography opportunities",
       "Outdoor networking",
     ],
+
     ticketTypes: [
       {
         id: "explorer",
@@ -150,7 +162,7 @@ export const events = [
         description: "Admission to the guided group experience.",
       },
       {
-        id: "pair",
+        id: "explorer-plus",
         name: "Explorer Plus",
         price: 1200,
         description: "Admission with a refreshment package.",
@@ -163,7 +175,7 @@ export function formatMoney(amount) {
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
