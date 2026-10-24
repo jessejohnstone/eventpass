@@ -16,6 +16,26 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
+// Accept Kenyan mobile numbers entered as:
+// 0712345678, 0112345678, 254712345678, or +254712345678.
+function normalizeKenyanPhone(value) {
+  const cleaned = value.replace(/[\s()-]/g, "");
+
+  if (/^0[17]\d{8}$/.test(cleaned)) {
+    return `+254${cleaned.slice(1)}`;
+  }
+
+  if (/^254[17]\d{8}$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+
+  if (/^\+254[17]\d{8}$/.test(cleaned)) {
+    return cleaned;
+  }
+
+  return null;
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,6 +56,7 @@ export default function Login() {
 
   const [form, setForm] = useState({
     name: "",
+    phone: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -111,17 +132,28 @@ export default function Login() {
       return;
     }
 
-    if (
-      isSignup &&
-      form.password !== form.confirmPassword
-    ) {
-      setError("Your passwords do not match.");
-      return;
-    }
+    let normalizedPhone = null;
 
-    if (isSignup && form.name.trim().length < 2) {
-      setError("Enter your full name.");
-      return;
+    if (isSignup) {
+      if (form.name.trim().length < 2) {
+        setError("Enter your full name.");
+        return;
+      }
+
+      normalizedPhone = normalizeKenyanPhone(form.phone);
+
+      if (!normalizedPhone) {
+        setError(
+          "Enter a valid Kenyan mobile number, such as 0712345678 or +254712345678."
+        );
+
+        return;
+      }
+
+      if (form.password !== form.confirmPassword) {
+        setError("Your passwords do not match.");
+        return;
+      }
     }
 
     setBusy(true);
@@ -138,6 +170,7 @@ export default function Login() {
             options: {
               data: {
                 full_name: form.name.trim(),
+                phone_number: normalizedPhone,
               },
 
               emailRedirectTo:
@@ -231,7 +264,7 @@ export default function Login() {
 
         {!isConfigured && (
           <div className="auth-error" role="alert">
-            Supabase is not configured. Add the project
+            Supabase is not configured. Add your project
             URL and publishable key to .env.local,
             then restart the development server.
           </div>
@@ -245,22 +278,47 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           {isSignup && (
-            <label className="form-field">
-              Full name
+            <>
+              <label className="form-field">
+                Full name
 
-              <input
-                type="text"
-                name="name"
-                autoComplete="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Johnstone Oroni"
-                minLength={2}
-                maxLength={100}
-                disabled={busy}
-                required
-              />
-            </label>
+                <input
+                  type="text"
+                  name="name"
+                  autoComplete="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Johnstone Oroni"
+                  minLength={2}
+                  maxLength={100}
+                  disabled={busy}
+                  required
+                />
+              </label>
+
+              <label className="form-field">
+                Phone number
+
+                <input
+                  type="tel"
+                  name="phone"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="0712345678"
+                  maxLength={25}
+                  aria-describedby="phone-help"
+                  disabled={busy}
+                  required
+                />
+
+                <small id="phone-help">
+                  Kenyan mobile number, for example
+                  0712345678 or +254712345678.
+                </small>
+              </label>
+            </>
           )}
 
           <label className="form-field">

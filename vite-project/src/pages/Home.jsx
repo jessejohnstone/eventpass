@@ -1,34 +1,85 @@
-import { useState } from "react";
-import { ArrowUpRight, Search, Ticket } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import { Link } from "react-router-dom";
+
+import {
+  ArrowUpRight,
+  Search,
+} from "lucide-react";
 
 import EventCard from "../components/EventCard";
-import { categories, events } from "../data/event .js";
+import { getPublishedEvents } from "../lib/events";
+
+const categories = [
+  "All events",
+  "Music",
+  "Technology",
+  "Arts & Culture",
+  "Outdoors",
+  "Business",
+  "Other",
+];
 
 export default function Home() {
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All events");
-  const [selectedCity, setSelectedCity] = useState("All locations");
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const cities = [...new Set(events.map((event) => event.city))];
+  const [search, setSearch] = useState("");
+
+  const [selectedCategory, setSelectedCategory] =
+    useState("All events");
+
+  const [selectedCity, setSelectedCity] =
+    useState("All locations");
+
+  const loadEvents = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      setEvents(await getPublishedEvents());
+    } catch (loadError) {
+      setError(loadError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  const cities = [
+    ...new Set(events.map((event) => event.city)),
+  ];
 
   const filteredEvents = events.filter((event) => {
-    const searchableText =
-      `${event.title} ${event.category} ${event.city} ${event.venue}`
-        .toLowerCase();
+    const text = [
+      event.title,
+      event.city,
+      event.venue,
+      event.category,
+      event.organizer,
+    ]
+      .join(" ")
+      .toLowerCase();
 
-    const matchesSearch = searchableText.includes(
-      search.trim().toLowerCase()
+    return (
+      text.includes(search.trim().toLowerCase()) &&
+      (
+        selectedCategory === "All events" ||
+        event.category === selectedCategory
+      ) &&
+      (
+        selectedCity === "All locations" ||
+        event.city === selectedCity
+      )
     );
-
-    const matchesCategory =
-      selectedCategory === "All events" ||
-      event.category === selectedCategory;
-
-    const matchesCity =
-      selectedCity === "All locations" ||
-      event.city === selectedCity;
-
-    return matchesSearch && matchesCategory && matchesCity;
   });
 
   function clearFilters() {
@@ -53,19 +104,17 @@ export default function Home() {
           </h1>
 
           <p>
-            Find your people. Feel the energy. Discover experiences
-            worth stepping out for.
+            Find your people. Feel the energy.
+            Discover experiences worth stepping out for.
           </p>
 
-          <a href="#discover" className="button button-dark">
+          <a
+            href="#discover"
+            className="button button-dark"
+          >
             Find your next event
             <ArrowUpRight size={19} />
           </a>
-
-          <div className="hero-note">
-            <Ticket size={18} />
-            <span>One ticket. A whole new story.</span>
-          </div>
         </div>
 
         <div className="hero-art">
@@ -79,7 +128,10 @@ export default function Home() {
             <ArrowUpRight size={30} />
           </div>
 
-          <div className="hero-sun" aria-hidden="true" />
+          <div
+            className="hero-sun"
+            aria-hidden="true"
+          />
 
           <div className="hero-art-title">
             BE
@@ -95,11 +147,14 @@ export default function Home() {
       </section>
 
       <div className="experience-strip">
-        GOOD MUSIC ✳ GREAT PEOPLE ✳ BIG IDEAS ✳ NEW EXPERIENCES
-        ✳ GOOD MUSIC ✳ GREAT PEOPLE ✳ BIG IDEAS
+        GOOD MUSIC ✳ GREAT PEOPLE ✳ BIG IDEAS
+        ✳ NEW EXPERIENCES ✳
       </div>
 
-      <section id="discover" className="discover-section container">
+      <section
+        id="discover"
+        className="discover-section container"
+      >
         <div className="section-heading">
           <div>
             <span className="eyebrow">
@@ -109,7 +164,14 @@ export default function Home() {
             <h2>Out there. Waiting for you.</h2>
           </div>
 
-          <p>Find something that feels like you.</p>
+          <button
+            type="button"
+            className="button button-small"
+            onClick={loadEvents}
+            disabled={loading}
+          >
+            Refresh events
+          </button>
         </div>
 
         <div className="search-controls">
@@ -119,21 +181,27 @@ export default function Home() {
             <input
               type="search"
               aria-label="Search events"
-              placeholder="Search events, interests, or places..."
+              placeholder="Search events or places..."
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
             />
           </label>
 
           <select
             aria-label="Filter events by location"
             value={selectedCity}
-            onChange={(event) => setSelectedCity(event.target.value)}
+            onChange={(event) =>
+              setSelectedCity(event.target.value)
+            }
           >
             <option>All locations</option>
 
             {cities.map((city) => (
-              <option key={city}>{city}</option>
+              <option key={city}>
+                {city}
+              </option>
             ))}
           </select>
         </div>
@@ -148,78 +216,116 @@ export default function Home() {
                   ? "filter-button selected"
                   : "filter-button"
               }
-              onClick={() => setSelectedCategory(category)}
-              aria-pressed={selectedCategory === category}
+              aria-pressed={
+                selectedCategory === category
+              }
+              onClick={() =>
+                setSelectedCategory(category)
+              }
             >
               {category}
             </button>
           ))}
         </div>
 
-        <p className="results-count">
-          {filteredEvents.length}{" "}
-          {filteredEvents.length === 1 ? "experience" : "experiences"}
-        </p>
-
-        {filteredEvents.length > 0 ? (
-          <div className="events-grid">
-            {filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
+        {error ? (
+          <div className="auth-error" role="alert">
+            {error}
           </div>
+        ) : loading ? (
+          <div className="empty-state" role="status">
+            Loading events…
+          </div>
+        ) : filteredEvents.length > 0 ? (
+          <>
+            <p className="results-count">
+              {filteredEvents.length} experiences
+            </p>
+
+            <div className="events-grid">
+              {filteredEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="empty-state">
-            <h3>No events found.</h3>
-            <p>Try another search, category, or location.</p>
+            <h3>
+              {events.length === 0
+                ? "No upcoming events published yet."
+                : "No matching events."}
+            </h3>
 
-            <button
-              type="button"
-              className="button button-dark"
-              onClick={clearFilters}
-            >
-              Clear filters
-            </button>
+            <p>
+              {events.length === 0
+                ? "Organizers can create and publish events from their dashboard."
+                : "Try another category, location, or search."}
+            </p>
+
+            {events.length === 0 ? (
+              <Link
+                to="/organizer"
+                className="button button-dark"
+              >
+                Create an event
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="button button-dark"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
       </section>
 
-      <section id="how-it-works" className="how-section container">
+      <section
+        id="how-it-works"
+        className="how-section container"
+      >
         <span className="eyebrow">YOUR WAY IN</span>
+
         <h2>From discovery to the front door.</h2>
 
         <div className="steps-grid">
           <article className="step-card">
             <span className="step-number">01</span>
-            <h3>Find your experience</h3>
-            <p>
-              Explore events and choose something you would love
-              to attend.
-            </p>
+            <h3>Discover</h3>
+            <p>Find an event you would love to attend.</p>
           </article>
 
           <article className="step-card">
             <span className="step-number">02</span>
-            <h3>Choose your ticket</h3>
-            <p>
-              Select your ticket category and quantity, then
-              complete checkout once payments are connected.
-            </p>
+            <h3>Choose</h3>
+            <p>Select your ticket category and quantity.</p>
           </article>
 
           <article className="step-card">
             <span className="step-number">03</span>
-            <h3>Show up and enjoy</h3>
+            <h3>Attend</h3>
+
             <p>
-              After verified payment, your unique QR ticket will
-              be used for admission.
+              Verified payment and admission tickets
+              are the next stage of this build.
             </p>
           </article>
         </div>
       </section>
 
-      <section id="organizers" className="organizer-banner container">
+      <section
+        id="organizers"
+        className="organizer-banner container"
+      >
         <div>
-          <span className="eyebrow">FOR THE MOMENT MAKERS</span>
+          <span className="eyebrow">
+            FOR THE MOMENT MAKERS
+          </span>
 
           <h2>
             Your idea.
@@ -228,26 +334,17 @@ export default function Home() {
           </h2>
 
           <p>
-            Our organizer workspace will bring event publishing,
-            ticket sales, entrance scanning, and planning together.
+            Create an event, set your ticket categories,
+            and publish it for your community.
           </p>
-        </div>
 
-        <div className="organizer-feature-list">
-          <div>
-            <span>01</span>
-            <p>Create events and ticket categories</p>
-          </div>
-
-          <div>
-            <span>02</span>
-            <p>Track verified sales and attendance</p>
-          </div>
-
-          <div>
-            <span>03</span>
-            <p>Plan with budget calculations and AI assistance</p>
-          </div>
+          <Link
+            to="/organizer"
+            className="button"
+          >
+            Open organizer workspace
+            <ArrowUpRight size={18} />
+          </Link>
         </div>
       </section>
     </main>

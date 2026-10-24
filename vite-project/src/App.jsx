@@ -7,23 +7,39 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import Navbar from "./components/Navbar";
-import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar.jsx";
 
-import Home from "./pages/Home";
-import EventDetails from "./pages/EventDetails";
-import Login from "./pages/Login";
-import OrganizerDashboard from "./pages/OrganizerDashboard";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+
+import Home from "./pages/Home.jsx";
+import EventDetails from "./pages/EventDetails.jsx";
+import Login from "./pages/Login.jsx";
+
+import OrganizerDashboard from "./pages/OrganizerDashboard.jsx";
+import Tickets from "./pages/Tickets.jsx";
 
 function ScrollToLocation() {
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    if (hash) {
+    // Only treat known homepage sections as anchors.
+    // Supabase and ticket links can also contain
+    // URL fragments, which must remain untouched.
+    const sectionIds = [
+      "discover",
+      "how-it-works",
+      "organizers",
+    ];
+
+    const sectionId = hash.slice(1);
+
+    if (
+      pathname === "/" &&
+      sectionIds.includes(sectionId)
+    ) {
       const frame = window.requestAnimationFrame(() => {
-        const element = document.getElementById(
-          hash.slice(1)
-        );
+        const element =
+          document.getElementById(sectionId);
 
         element?.scrollIntoView({
           behavior: "smooth",
@@ -37,6 +53,7 @@ function ScrollToLocation() {
 
     window.scrollTo({
       top: 0,
+      left: 0,
       behavior: "instant",
     });
   }, [pathname, hash]);
@@ -50,7 +67,10 @@ function NotFound() {
       <div className="empty-state">
         <h1>That page wandered off.</h1>
 
-        <p>Let’s find your next experience.</p>
+        <p>
+          The address may be incorrect,
+          or this page may no longer exist.
+        </p>
 
         <Link
           to="/"
@@ -73,16 +93,18 @@ export default function App() {
       <Navbar />
 
       <div className="development-notice">
-        Sample events · Booking and admission
-        are not active yet.
+        Payment integration in testing.
+        Use Paystack test mode during development.
       </div>
 
       <Routes>
+        {/* Public homepage */}
         <Route
           path="/"
           element={<Home />}
         />
 
+        {/* Published events and owner-only draft previews */}
         <Route
           path="/events/:id"
           element={
@@ -92,11 +114,13 @@ export default function App() {
           }
         />
 
+        {/* Organizer registration and login */}
         <Route
           path="/organizer/login"
           element={<Login />}
         />
 
+        {/* Protected organizer dashboard */}
         <Route
           path="/organizer"
           element={
@@ -106,6 +130,35 @@ export default function App() {
           }
         />
 
+        {/* Return from Paystack checkout */}
+        <Route
+          path="/checkout/return"
+          element={
+            <Tickets
+              key={
+                location.pathname +
+                location.search +
+                location.hash
+              }
+            />
+          }
+        />
+
+        {/* Private ticket link */}
+        <Route
+          path="/tickets"
+          element={
+            <Tickets
+              key={
+                location.pathname +
+                location.search +
+                location.hash
+              }
+            />
+          }
+        />
+
+        {/* Unknown addresses */}
         <Route
           path="*"
           element={<NotFound />}
