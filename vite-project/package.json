@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "server": "node --env-file=.env src/server/index.js"
+    "server": "node --env-file=.env src/server/index.js",
+    "test": "node --test src/server/lib/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

@@ -18,6 +18,7 @@ import {
 import {
   fetchOrderTickets,
   getStoredOrderAccess,
+  requestConfirmationEmail,
   verifyOrder,
 } from "../lib/payments.js";
 
@@ -53,6 +54,9 @@ export default function Tickets() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const loadTickets = useCallback(async () => {
     setLoading(true);
@@ -84,6 +88,30 @@ export default function Tickets() {
       setLoading(false);
     }
   }, [reference, accessToken]);
+
+  async function handleSendConfirmation() {
+    setEmailBusy(true);
+    setEmailMessage("");
+    setEmailError("");
+
+    try {
+      const result = await requestConfirmationEmail(accessToken);
+      if (!result.accepted) {
+        throw new Error("The email provider did not accept the request.");
+      }
+
+      setEmailMessage(
+        "The email provider accepted your request. Delivery to your inbox is not confirmed."
+      );
+    } catch (requestError) {
+      setEmailError(
+        requestError.message ||
+          "Could not request a confirmation email. Your tickets remain available here."
+      );
+    } finally {
+      setEmailBusy(false);
+    }
+  }
 
   useEffect(() => {
     loadTickets();
@@ -186,6 +214,15 @@ export default function Tickets() {
         <button
           type="button"
           className="button button-dark"
+          onClick={handleSendConfirmation}
+          disabled={emailBusy}
+        >
+          {emailBusy ? "Requesting email…" : "Send confirmation email"}
+        </button>
+
+        <button
+          type="button"
+          className="button button-dark"
           onClick={() => window.print()}
         >
           <Printer size={17} />
@@ -199,6 +236,18 @@ export default function Tickets() {
           Browse events
         </Link>
       </div>
+
+      {emailMessage && (
+        <p className="information-message" role="status" aria-live="polite">
+          {emailMessage}
+        </p>
+      )}
+
+      {emailError && (
+        <p className="auth-error" role="alert">
+          {emailError}
+        </p>
+      )}
 
       {data.tickets.map((ticket) => (
         <article
@@ -266,9 +315,7 @@ export default function Tickets() {
       ))}
 
       <p className="ticket-privacy-note">
-        Confirmation email delivery and entrance
-        scanning are the next parts of this build.
-        Save your tickets now.
+        Keep the private ticket link and QR codes confidential.
       </p>
     </main>
   );

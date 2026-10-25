@@ -81,3 +81,10 @@ export function fetchOrderTickets(accessToken) {
     }
   );
 }
+
+export function requestConfirmationEmail(accessToken) {
+  return postRequest(
+    "/orders/confirmation-email",
+    { accessToken }
+  );
+}

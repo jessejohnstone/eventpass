@@ -19,6 +19,11 @@ import {
 } from "node:url";
 
 import QRCode from "qrcode";
+import {
+  createTicketEmailService,
+  requestConfirmationForAccess,
+} from "./lib/ticketEmail.js";
+import { createTicketEmailStore } from "./lib/ticketEmailStore.js";
 
 const requiredVariables = [
   "APP_URL",
@@ -78,6 +83,13 @@ const supabase = createClient(
     },
   }
 );
+
+const ticketEmailService = createTicketEmailService({
+  store: createTicketEmailStore(supabase),
+  apiKey: process.env.RESEND_API_KEY,
+  from: process.env.EMAIL_FROM,
+  appUrl: APP_URL,
+});
 
 const app = express();
 
@@ -229,6 +241,10 @@ async function verifyAndConfirm(order) {
     order.status === "review" ||
     order.status === "voided"
   ) {
+    if (order.status === "paid") {
+      await sendConfirmationSafely(order.id);
+    }
+
     return order;
   }
 
@@ -255,7 +271,7 @@ async function verifyAndConfirm(order) {
     );
   }
 
-  return checked(
+  const confirmed = checked(
     await supabase.rpc(
       "confirm_ticket_order",
       {
@@ -264,6 +280,12 @@ async function verifyAndConfirm(order) {
       }
     )
   );
+
+  if (confirmed?.status === "paid") {
+    await sendConfirmationSafely(order.id);
+  }
+
+  return confirmed;
 }
 
 async function buildTicketResponse(order) {
@@ -478,6 +500,73 @@ app.get(
       paymentMode: PAYMENT_DOMAIN,
     });
   }
+);
+
+const confirmationRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    error: "Too many email requests. Please wait before trying again.",
+  },
+});
+
+app.post(
+  "/api/orders/confirmation-email",
+  confirmationRequestLimiter,
+  asyncRoute(async (request, response) => {
+    const input = z.object({
+      accessToken: accessTokenSchema,
+    }).parse(request.body);
+
+    const result = await requestConfirmationForAccess({
+      accessToken: input.accessToken,
+      findOrderByAccess,
+      emailService: ticketEmailService,
+    });
+
+    if (!result.accepted) {
+      const status = result.reason === "not_due" ? 429 : 503;
+      return response.status(status).json({
+        accepted: false,
+        error: result.reason === "not_due"
+          ? "Please wait before requesting another confirmation email."
+          : "The email provider did not accept the confirmation. Your tickets remain available here.",
+      });
+    }
+
+    response.json({
+      accepted: true,
+      message: "The email provider accepted the confirmation request. Inbox delivery is not confirmed.",
+    });
+  })
+);
+
+app.post(
+  "/api/internal/ticket-confirmations/retry",
+  rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+  }),
+  asyncRoute(async (request, response) => {
+    const cronSecret = process.env.CRON_SECRET;
+    const authorization = request.get("authorization") || "";
+    if (!cronSecret || !authorization.startsWith("Bearer ")) {
+      throw httpError("Not found.", 404);
+    }
+
+    const supplied = Buffer.from(authorization.slice(7));
+    const expected = Buffer.from(cronSecret);
+    if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
+      throw httpError("Not found.", 404);
+    }
+
+    const result = await ticketEmailService.processDue(5);
+    response.json({ ok: true, ...result });
+  })
 );
 
 const checkoutLimiter = rateLimit({
@@ -711,7 +800,11 @@ app.use(
       error:
         status >= 500
           ? "The service could not complete this request. Please try again."
-          : error.message,
+          : status === 429
+            ? "Please wait before requesting another confirmation email."
+            : status === 409
+              ? "A confirmation request is already in progress or unavailable for this order."
+              : error.message,
     });
   }
 );
@@ -733,3 +826,13 @@ app.listen(
     );
   }
 );
+
+async function sendConfirmationSafely(orderId) {
+  try {
+    return await ticketEmailService.sendForOrder(orderId);
+  } catch {
+    // Payment confirmation must not fail because email delivery is unavailable.
+    console.error("Ticket confirmation email processing failed.");
+    return { accepted: false, reason: "processing_failed" };
+  }
+}
